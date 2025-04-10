@@ -1,0 +1,100 @@
+# Do not change this file. Do local changes only in docker-compose.override.yml
+
+services:
+  moodle:
+    image: ghcr.io/projektadler/adler-moodle:6.3.0-moodle-4.5
+    environment:
+      MOODLE_DATABASE_HOST: db_moodle
+      MOODLE_DATABASE_PORT_NUMBER: 3306
+      MOODLE_DATABASE_USER: ${_DB_MOODLE_USER}
+      MOODLE_DATABASE_PASSWORD: ${_DB_MOODLE_PW}
+      MOODLE_DATABASE_NAME: ${_DB_MOODLE_NAME}
+      MOODLE_USERNAME: ${_MOODLE_USER}
+      MOODLE_PASSWORD: ${_MOODLE_PW}
+      MOODLE_HOST: ${_URL_MOODLE}
+      BITNAMI_DEBUG: true
+      PHP_POST_MAX_SIZE: 2048M
+      PHP_UPLOAD_MAX_FILESIZE: 2048M
+    volumes:
+      - moodle_moodle:/bitnami/moodle
+      - moodle_moodledata:/bitnami/moodledata
+    depends_on:
+      - db_moodle
+    restart: unless-stopped
+
+  db_moodle:
+    image: docker.io/bitnami/mariadb:10.11
+    environment:
+      MARIADB_USER: ${_DB_MOODLE_USER}
+      MARIADB_PASSWORD: ${_DB_MOODLE_PW}
+      MARIADB_ROOT_PASSWORD: ${_DB_ROOT_PW}
+      MARIADB_DATABASE: ${_DB_MOODLE_NAME}
+      MARIADB_CHARACTER_SET: utf8mb4
+      MARIADB_COLLATE: utf8mb4_unicode_ci
+    volumes:
+      - db_moodle_data:/bitnami/mariadb
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/bitnami/scripts/mariadb/healthcheck.sh"]
+      start_period: 10s
+      interval: 15s
+      timeout: 5s
+
+  db_backend:
+    image: docker.io/bitnami/mariadb:10.11
+    environment:
+      MARIADB_USER: ${_DB_BACKEND_USER}
+      MARIADB_PASSWORD: ${_DB_BACKEND_PW}
+      MARIADB_ROOT_PASSWORD: ${_DB_ROOT_PW}
+      MARIADB_DATABASE: ${_DB_BACKEND_NAME}
+      MARIADB_CHARACTER_SET: utf8mb4
+      MARIADB_COLLATE: utf8mb4_unicode_ci
+    volumes:
+      - db_backend_data:/bitnami/mariadb
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/opt/bitnami/scripts/mariadb/healthcheck.sh"]
+      start_period: 10s
+      interval: 15s
+      timeout: 5s
+
+  backend:
+    image: ghcr.io/projektadler/adlerbackend:2.4.4
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ASPNETCORE_DBUSER: ${_DB_BACKEND_USER}
+      ASPNETCORE_DBPASSWORD: ${_DB_BACKEND_PW}
+      ASPNETCORE_DBNAME: ${_DB_BACKEND_NAME}
+      ASPNETCORE_DBHOST: db_backend
+      ASPNETCORE_DBPORT: 3306
+      ASPNETCORE_ADLER_MOODLEURL: http://${_URL_MOODLE}
+      ASPNETCORE_ADLER_HTTPPORT: 80
+      ASPNETCORE_ADLER_ADLERENGINEURL: http://${_URL_3D}
+    volumes:
+      - backend_wwwroot:/app/wwwroot
+    depends_on:
+      db_backend:
+        condition: service_healthy
+        required: true
+    restart: unless-stopped
+    extra_hosts:
+      - ${_DOMAIN}:host-gateway
+
+  frontend:
+    image: ghcr.io/projektadler/2d_3d_adler:2.8.0
+    environment:
+      API_URL: "http://${_URL_BACKEND}/api"
+      MOODLE_URL: "http://${_URL_MOODLE}"
+    restart: unless-stopped
+
+volumes:
+  moodle_moodle:
+    driver: local
+  moodle_moodledata:
+    driver: local
+  db_moodle_data:
+    driver: local
+  db_backend_data:
+    driver: local
+  backend_wwwroot:
+    driver: local

@@ -1,16 +1,17 @@
+# AdLer-Stack release: 3.2.0
 # Do not change this file. Do local changes only in docker-compose.override.yml
 
 services:
   moodle:
-    image: ghcr.io/projektadler/adler-moodle:6.3.0-moodle-4.5
+    image: ghcr.io/projektadler/adler-moodle:6.5.1-moodle-4.5
     environment:
       MOODLE_DATABASE_HOST: db_moodle
       MOODLE_DATABASE_PORT_NUMBER: 3306
       MOODLE_DATABASE_USER: ${_DB_MOODLE_USER}
       MOODLE_DATABASE_PASSWORD: ${_DB_MOODLE_PW}
       MOODLE_DATABASE_NAME: ${_DB_MOODLE_NAME}
-      MOODLE_USERNAME: ${_MOODLE_USER}
-      MOODLE_PASSWORD: ${_MOODLE_PW}
+      MOODLE_USERNAME: ${_MOODLE_ADMIN_USER}
+      MOODLE_PASSWORD: ${_MOODLE_ADMIN_PW}
       MOODLE_HOST: ${_URL_MOODLE}
       BITNAMI_DEBUG: true
       PHP_POST_MAX_SIZE: 2048M
@@ -19,11 +20,12 @@ services:
       - moodle_moodle:/bitnami/moodle
       - moodle_moodledata:/bitnami/moodledata
     depends_on:
-      - db_moodle
+      db_moodle:
+        condition: service_healthy
     restart: unless-stopped
 
   db_moodle:
-    image: docker.io/bitnami/mariadb:10.11
+    image: docker.io/bitnami/mariadb:11.4
     environment:
       MARIADB_USER: ${_DB_MOODLE_USER}
       MARIADB_PASSWORD: ${_DB_MOODLE_PW}
@@ -36,12 +38,12 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/opt/bitnami/scripts/mariadb/healthcheck.sh"]
-      start_period: 10s
+      start_period: 30s
       interval: 15s
       timeout: 5s
 
   db_backend:
-    image: docker.io/bitnami/mariadb:10.11
+    image: docker.io/bitnami/mariadb:11.4
     environment:
       MARIADB_USER: ${_DB_BACKEND_USER}
       MARIADB_PASSWORD: ${_DB_BACKEND_PW}
@@ -54,12 +56,12 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/opt/bitnami/scripts/mariadb/healthcheck.sh"]
-      start_period: 10s
+      start_period: 30s
       interval: 15s
       timeout: 5s
 
   backend:
-    image: ghcr.io/projektadler/adlerbackend:2.4.4
+    image: ghcr.io/projektadler/adlerbackend:2.4.9
     environment:
       ASPNETCORE_ENVIRONMENT: "Production"
       ASPNETCORE_DBUSER: ${_DB_BACKEND_USER}
@@ -67,25 +69,29 @@ services:
       ASPNETCORE_DBNAME: ${_DB_BACKEND_NAME}
       ASPNETCORE_DBHOST: db_backend
       ASPNETCORE_DBPORT: 3306
-      ASPNETCORE_ADLER_MOODLEURL: http://${_URL_MOODLE}
+      ASPNETCORE_ADLER_MOODLEURL: https://${_URL_MOODLE}
       ASPNETCORE_ADLER_HTTPPORT: 80
-      ASPNETCORE_ADLER_ADLERENGINEURL: http://${_URL_3D}
+      ASPNETCORE_ADLER_ADLERENGINEURL: https://${_URL_3D}
     volumes:
       - backend_wwwroot:/app/wwwroot
     depends_on:
       db_backend:
         condition: service_healthy
-        required: true
+      moodle:
+        condition: service_healthy
     restart: unless-stopped
     extra_hosts:
       - ${_DOMAIN}:host-gateway
 
   frontend:
-    image: ghcr.io/projektadler/2d_3d_adler:2.8.0
+    image: ghcr.io/projektadler/2d_3d_adler:2.9.0
     environment:
-      API_URL: "http://${_URL_BACKEND}/api"
-      MOODLE_URL: "http://${_URL_MOODLE}"
+      API_URL: "https://${_URL_BACKEND}/api"
+      MOODLE_URL: "https://${_URL_MOODLE}"
     restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   moodle_moodle:

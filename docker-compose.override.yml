@@ -13,20 +13,14 @@ services:
       - "traefik.http.routers.moodle_${_DEPLOYMENT_NAME}.tls=true"
       - "traefik.http.routers.moodle_${_DEPLOYMENT_NAME}.tls.certresolver=le"
       - "traefik.http.routers.moodle_${_DEPLOYMENT_NAME}.entrypoints=websecure"
-    env_file:
-      - stack.env
 
   db_moodle:
     networks:
       - internal
-    env_file:
-      - stack.env
 
   db_backend:
     networks:
       - internal
-    env_file:
-      - stack.env
 
   backend:
     networks:
@@ -42,8 +36,6 @@ services:
       - "traefik.http.routers.api_${_DEPLOYMENT_NAME}.tls=true"
       - "traefik.http.routers.api_${_DEPLOYMENT_NAME}.tls.certresolver=le"
       - "traefik.http.routers.api_${_DEPLOYMENT_NAME}.entrypoints=websecure"
-    env_file:
-      - stack.env
 
   frontend:
     networks:
@@ -57,8 +49,6 @@ services:
       - "traefik.http.routers.3d_${_DEPLOYMENT_NAME}.tls=true"
       - "traefik.http.routers.3d_${_DEPLOYMENT_NAME}.tls.certresolver=le"
       - "traefik.http.routers.3d_${_DEPLOYMENT_NAME}.entrypoints=websecure"
-    env_file:
-      - stack.env
 
 networks:
   traefik_gateway:
